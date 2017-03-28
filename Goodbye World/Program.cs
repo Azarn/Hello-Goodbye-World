@@ -3,7 +3,6 @@ using System.Collections.Generic;
 using System.IO;
 using System.Reflection;
 using System.Reflection.Emit;
-using System.Text;
 
 namespace Goodbye_World {
     struct Instruction {
@@ -19,6 +18,8 @@ namespace Goodbye_World {
         public static readonly string RELATIVE_PATH = @"..\..\..\Hello World\bin\Release\Hello World.exe";
         public static readonly string SEARCH_STRING = "Hello";
         public static readonly string REPLACE_STRING = "Goodbye";
+        public static readonly BindingFlags ALMOST_ALL_FLAGS = BindingFlags.Instance | BindingFlags.NonPublic |
+                                                               BindingFlags.Public | BindingFlags.Static;
 
         // Cecil, .!.
         public static readonly IDictionary<OperandType, int> OPERAND_SIZE_MAP = new Dictionary<OperandType, int>() {
@@ -45,7 +46,7 @@ namespace Goodbye_World {
 
         static Program() {
             // Cecil, .!. .!. .!.
-            foreach(FieldInfo fi in typeof(OpCodes).GetFields(BindingFlags.DeclaredOnly |
+            foreach (FieldInfo fi in typeof(OpCodes).GetFields(BindingFlags.DeclaredOnly |
                                                               BindingFlags.Static | BindingFlags.Public)) {
                 if (fi.FieldType == typeof(OpCode)) {
                     OpCode opcode = (OpCode)fi.GetValue(null);
@@ -55,6 +56,7 @@ namespace Goodbye_World {
         }
 
         static void Main(string[] args) {
+            //Assembly a = Assembly.ReflectionOnlyLoadFrom(Path.GetFullPath(RELATIVE_PATH));
             Assembly a = Assembly.LoadFile(Path.GetFullPath(RELATIVE_PATH));
             foreach (Module m in a.GetModules()) {
                 Console.WriteLine("Module: {0}", m);
@@ -62,12 +64,13 @@ namespace Goodbye_World {
                     IterateType(m, t, SEARCH_STRING, REPLACE_STRING);
                 }
             }
+            a.EntryPoint.Invoke(null, new object[] { args });
         }
 
         static List<Instruction> ParseInstuctions(byte[] src) {
             List<Instruction> res = new List<Instruction>();
             long pos = 0;
-            while(pos < src.LongLength) {       // Yeah, > 2 GB IL code
+            while (pos < src.LongLength) {       // Yeah, > 2 GB IL code
                 short opValue = src[pos++];
                 if (!OPCODE_VALUE_MAP.ContainsKey(opValue)) {
                     opValue <<= 8;
@@ -85,13 +88,13 @@ namespace Goodbye_World {
                     operand = new byte[operandSize]
                 };
 
-                for(int i = 0; i < operandSize; ++i) {
+                for (int i = 0; i < operandSize; ++i) {
                     instr.operand[i] = src[pos++];
                 }
 
+                res.Add(instr);
                 Console.WriteLine("Parsed: {0}", instr);
             }
-
             return res;
         }
 
@@ -105,14 +108,11 @@ namespace Goodbye_World {
             }
             Console.WriteLine("Type: {0}", type);
 
-            foreach (Type nt in type.GetNestedTypes(BindingFlags.Instance | BindingFlags.NonPublic |
-                                                    BindingFlags.Public | BindingFlags.Static)) {
+            foreach (Type nt in type.GetNestedTypes(ALMOST_ALL_FLAGS)) {
                 IterateType(currentModule, nt, old, replacement);
             }
 
-            foreach (MethodInfo mi in type.GetMethods(BindingFlags.Instance | BindingFlags.NonPublic |
-                                                      BindingFlags.Public | BindingFlags.Static |
-                                                      BindingFlags.DeclaredOnly)) {
+            foreach (MethodInfo mi in type.GetMethods(ALMOST_ALL_FLAGS | BindingFlags.DeclaredOnly)) {
                 Console.WriteLine(mi);
                 if (mi.GetMethodBody() == null) {
                     continue;
@@ -122,16 +122,14 @@ namespace Goodbye_World {
                 Console.WriteLine("SRC Bytes:");
                 Console.WriteLine(BitConverter.ToString(src));
 
-                ParseInstuctions(src);
-
-                /*for (int i = 0; i < mi.GetMethodBody().get .Body.Instructions.Count - 1; i++) {
-                    Instruction inst = mi.Body.Instructions[i];
-                    if (inst.OpCode == OpCodes.Ldstr) {
-                        if (inst.Operand.ToString().Equals(old)) {
-                            inst.Operand = replacement;
-                        }
+                List<Instruction> lst = ParseInstuctions(src);
+                foreach (Instruction inst in lst) {
+                    if (inst.opCode == OpCodes.Ldstr) {
+                        string foundString = currentModule.ResolveString(BitConverter.ToInt32(inst.operand, 0));
+                        foundString = foundString.Replace(SEARCH_STRING, REPLACE_STRING);
+                        Console.WriteLine(foundString);
                     }
-                }*/
+                }
             }
         }
     }
