@@ -6,8 +6,14 @@ using Mono.Cecil;
 using Mono.Cecil.Cil;
 
 namespace Goodbye_World_Cecil {
+    /**
+     * This program will replace any string matching `SEARCH_STRING` with `REPLACE_STRING`
+     * in any Module and Type represented in binary file at `RELATIVE_PATH`
+     * and will save resulting assembly to `OUPUT_PATH`
+     */
     class Program {
         public static readonly string RELATIVE_PATH = @"..\..\..\Hello World\bin\Release\Hello World.exe";
+        public static readonly string OUTPUT_PATH = @"Fixed binary.exe";
         public static readonly string SEARCH_STRING = "Hello";
         public static readonly string REPLACE_STRING = "Goodbye";
 
@@ -20,7 +26,7 @@ namespace Goodbye_World_Cecil {
                 }
             }
 
-            ad.Write("test.exe");
+            ad.Write(OUTPUT_PATH);
         }
 
         static void IterateType(ModuleDefinition currentModule, TypeDefinition type) {
