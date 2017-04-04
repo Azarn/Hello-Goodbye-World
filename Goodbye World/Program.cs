@@ -56,15 +56,13 @@ namespace Goodbye_World {
         }
 
         static void Main(string[] args) {
-            //Assembly a = Assembly.ReflectionOnlyLoadFrom(Path.GetFullPath(RELATIVE_PATH));
-            Assembly a = Assembly.LoadFile(Path.GetFullPath(RELATIVE_PATH));
+            Assembly a = Assembly.ReflectionOnlyLoadFrom(Path.GetFullPath(RELATIVE_PATH));
             foreach (Module m in a.GetModules()) {
                 Console.WriteLine("Module: {0}", m);
                 foreach (Type t in m.GetTypes()) {
                     IterateType(m, t, SEARCH_STRING, REPLACE_STRING);
                 }
             }
-            a.EntryPoint.Invoke(null, new object[] { args });
         }
 
         static List<Instruction> ParseInstuctions(byte[] src) {
